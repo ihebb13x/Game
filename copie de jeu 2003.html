@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop - lesson 10: finishing up</title>
+    <style>* { padding: 0; margin: 0; }  canvas { background-image: url("image.png"); display: block; margin: 0 auto; } /*ici je change la coleur d'arriere #08b481
+         plan de jeux */
+    /*pour l'aafichage*/
+    #modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white; /*le coleur de la police*/
+        padding: 20px;
+        text-align: center; 
+    }
+
+    #modal-title { /*pour le title lorsque perdu ou gagne*/
+        font-size: 24px; /*taille de police*/
+        margin-bottom: 10px;
+    }
+
+    #modal-message { /*pour le message lorsque perdu ou gagne*/
+        font-size: 18px; /*taille de police*/
+        margin-bottom: 20px;
+    }
+    /*termine ici affichage*/
+    
+    #refraiche{
+        background-color: blueviolet; /*le coleur de la button*/
+        position: fixed;
+        top: 20px; /*pour deplacer le button vers l'haut*/
+    }
+
+    body{
+        background-image: url("mur.jpg");  /*l'arriere plan de body*/
+    }
+
+</style>
+</head>
+<body>
+    <!--pour lafichage perdu ou gagne-->
+    <div id="modal" style="display: none;">
+        <h2 id="modal-title"></h2>  
+        <p id="modal-message"></p>
+        <button onclick="closeModal()">Fermer</button> <!--lorsque on click sur le button faire appele a la fonction
+             closeModal pour fermer le fenetre -->
+    </div>
+
+     
+      
+<canvas id="myCanvas" width="840" height="620"></canvas> <!--la dimension de la canvas-->
+
+
+<button id="refraiche"  onclick="restartGame()">Rejouer</button>    <!--cette button pour faire un reload-->
+
+<audio id="loseSound" src="lose.m4a"></audio> <!--son lorsque perdu-->
+
+<audio id="Sound2" src="frape.m4a"></audio> <!--son lorsque le ballon touche le rectangle-->
+
+
+
+
+
+<script>
+
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+    var ballRadius = 15;  //la taille de la ballon par defaut 10
+    var x = canvas.width/2;
+    var y = canvas.height-30;
+    var dx = 2;
+    var dy = -2;
+    var paddleHeight = 20; //la taille de la paddle "ili tchd biha lkorra" par defaut 10
+    var paddleWidth = 120;  //la width  par defaut 75
+    var paddleX = (canvas.width-paddleWidth)/2;
+    var rightPressed = false;
+    var leftPressed = false;
+    var brickRowCount = 10; //le nombre de colonne de rectanggle
+    var brickColumnCount = 8; //le nombre de ligne de rectangle
+    var brickWidth = 70;  //la taille de rectangle 75
+    var brickHeight = 40;  //la taille de rectangle 20
+    var brickPadding = 10; //espace entre le rectangle
+    var brickOffsetTop = 30; //espace en top
+    var brickOffsetLeft = 30;
+    var score = 0; //en initialiser le score a 0 
+    var lives = 3; //le nombre de essai
+    var canvasWidth = 480; // Largeur du canvas
+    var canvasHeight = 320; // Hauteur du canvas
+
+
+    var bricks = [];
+    for(c=0; c<brickColumnCount; c++) {
+        bricks[c] = [];
+        for(r=0; r<brickRowCount; r++) {
+            bricks[c][r] = { x: 0, y: 0, status: 1 };
+        }
+    }
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+    document.addEventListener("mousemove", mouseMoveHandler, false);
+
+    function keyDownHandler(e) {
+        if(e.keyCode == 39) {
+            rightPressed = true;
+        }
+        else if(e.keyCode == 37) {
+            leftPressed = true;
+        }
+    }
+    function keyUpHandler(e) {
+        if(e.keyCode == 39) {
+            rightPressed = false;
+        }
+        else if(e.keyCode == 37) {
+            leftPressed = false;
+        }
+    }
+    function mouseMoveHandler(e) {
+        var relativeX = e.clientX - canvas.offsetLeft;
+        if(relativeX > 0 && relativeX < canvas.width) {
+            paddleX = relativeX - paddleWidth/2;
+        }
+    }
+    function collisionDetection() {
+        for(c=0; c<brickColumnCount; c++) {
+            for(r=0; r<brickRowCount; r++) {
+                var b = bricks[c][r];
+                if(b.status == 1) {
+                    if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+                        dy = -dy;
+                        b.status = 0;
+                        score++; //ici le ballon touche un rectangle en ajoutant a la score +1
+                        document.getElementById("Sound2").play(); //ici en active le son lorsque le ballon touche un rectangle
+                        if (score == brickRowCount * brickColumnCount) {  //ici si peut changer l'affichage 
+                            if(score == brickRowCount*brickColumnCount) {
+                                openModal("Félicitations !", "✅ CONGRATULATIONS, YOU WIN! ✅");
+
+                        }
+
+}
+                    }
+                }
+            }
+        }
+    }
+
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+        ctx.fillStyle = "red"; //ici pour changer la coleur de la ballon   #0095DD
+        ctx.fill();
+        ctx.closePath();
+    }
+    function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);   //la dimenion de mur
+        ctx.fillStyle = "#0095DD"; //le coleur de la paddle
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    
+    function drawBricks() {
+    var colors = ["yellow", "purple", "blue"]; // le 3 Couleurs des rectangle
+    var colorIndex = 0; // Index de la couleur actuelle
+
+    for(c = 0; c < brickColumnCount; c++) {
+        for(r = 0; r < brickRowCount; r++) {
+            if(bricks[c][r].status == 1) {
+                var brickX = (r * (brickWidth + brickPadding)) + brickOffsetLeft;
+                var brickY = (c * (brickHeight + brickPadding)) + brickOffsetTop;
+                bricks[c][r].x = brickX;
+                bricks[c][r].y = brickY;
+                ctx.beginPath();
+                ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                ctx.fillStyle = colors[colorIndex]; // Utilisation de la couleur actuelle
+                ctx.fill();
+                ctx.closePath();
+    
+                // Passage à la couleur suivante
+                colorIndex++;
+                if(colorIndex >= colors.length) { //si on atteint le derniere coleur 
+                    colorIndex = 0; //on retourne au debut
+                }
+                
+            }
+        }
+    }
+}
+
+    function drawScore() { //cette code pour l'element score le coleur,le size,fontfamilly
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Score: "+score, 8, 20);
+    }
+
+    function drawLives() {
+        ctx.font = "16px Arial"; //la font size
+        ctx.fillStyle = "#0095DD"; //le coleur de la mot lives
+        ctx.fillText("Lives: "+lives, canvas.width-65, 20);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        drawScore();
+        drawLives();
+        collisionDetection();
+
+        if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
+            dx = -dx;
+        }
+        if(y + dy < ballRadius) {
+            dy = -dy;
+        }
+        else if(y + dy > canvas.height-ballRadius) {
+            if(x > paddleX && x < paddleX + paddleWidth) {
+                dy = -dy;
+            }
+            else {
+                lives--;
+                if(!lives) { //si le joeur perdu
+                    openModal("Game Over", "❌ GAME OVER ❌, YOU LOST"); //le title est le message
+                    document.getElementById("loseSound").play(); //pour ajouter le son lorsque il perdu 
+                    
+                }
+
+                else {
+                    x = canvas.width/2;
+                    y = canvas.height-30;
+                    dx = 3;
+                    dy = -3;
+                    paddleX = (canvas.width-paddleWidth)/2;
+                }
+            }
+        }
+
+        if(rightPressed && paddleX < canvas.width-paddleWidth) {
+            paddleX += 7;
+        }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+
+        x += dx;
+        y += dy;
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+     
+
+
+
+
+
+
+
+
+    // cette focntion pour redemarer le jeux apes 100 milliseconde
+    function restartGame() {
+    setTimeout(function() { //setTimeout pour utiliser le temps
+        document.location.reload(); //ici cette fonction elle faire une reload apres 100millisexonds
+    }, 100); // 100 millisecondes = 0.1 secondes
+}
+
+//pour affichage
+function openModal(title, message) {
+    document.getElementById("modal-title").textContent = title; //le titre 
+    document.getElementById("modal-message").textContent = message; //le message
+    document.getElementById("modal").style.display = "block"; //pour afficher chacun dans un nouvelle ligne
+}
+
+function closeModal() {
+    document.getElementById("modal").style.display = "none"; //pour cacher la fenetre
+    document.location.reload(); //pour faire refraiche a la page
+}
+
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
